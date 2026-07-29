@@ -1,0 +1,175 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+
+// SYSTEM ENUMS
+
+
+enum OperationalArm {
+  TECH
+  CREATIVE
+  HYBRID
+
+  @@map("operational_arm")
+}
+
+enum AssetType {
+  IMAGE
+  VIDEO
+  AUDIO
+  DOCUMENT
+
+  @@map("asset_type")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  ARCHIVED
+
+  @@map("lead_status")
+}
+
+
+// CORE DOMAIN MODELS
+
+
+model ServiceCategory {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  operationalArm OperationalArm @map("operational_arm")
+  name           String         @db.VarChar
+  slug           String         @unique @db.VarChar
+  description    String?        @db.Text
+  iconSlug       String?        @map("icon_slug") @db.VarChar
+
+  // Relations
+  services Service[]
+  projects Project[]
+
+  @@map("service_categories")
+}
+
+model Service {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId       String?  @map("category_id") @db.Uuid
+  title            String   @db.VarChar
+  slug             String   @unique @db.VarChar
+  shortDescription String?  @map("short_description") @db.Text
+  isActive         Boolean? @default(true) @map("is_active")
+
+  // Relations
+  category   ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  quoteLeads QuoteLead[]
+
+  @@map("services")
+}
+
+model Project {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId      String?   @map("category_id") @db.Uuid
+  title           String    @db.VarChar
+  slug            String    @unique @db.VarChar
+  clientName      String?   @map("client_name") @db.VarChar
+  completionDate  DateTime? @default(now()) @map("completion_date") @db.Date
+  solutionDetails String    @map("solution_details") @db.Text
+  impactMetrics   Json?     @map("impact_metrics")
+  liveUrl         String?   @map("live_url") @db.VarChar
+  githubUrl       String?   @map("github_url") @db.VarChar
+  isFeatured      Boolean?  @default(false) @map("is_featured")
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  category     ServiceCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  media        ProjectMedia[]
+  testimonials Testimonial[]
+
+  @@map("projects")
+}
+
+model ProjectMedia {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId    String?   @map("project_id") @db.Uuid
+  assetType    AssetType @map("asset_type")
+  url          String    @db.VarChar
+  altText      String    @map("alt_text") @db.VarChar
+  displayOrder Int?      @default(0) @map("display_order")
+
+  // Relations
+  project Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_media")
+}
+
+model Testimonial {
+  id           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  projectId    String? @map("project_id") @db.Uuid
+  authorName   String  @map("author_name") @db.VarChar
+  authorRole   String  @map("author_role") @db.VarChar
+  companyName  String  @map("company_name") @db.VarChar
+  avatarUrl    String? @map("avatar_url") @db.VarChar
+  quote        String  @db.Text
+  displayOrder Int?    @default(0) @map("display_order")
+
+  // Relations
+  project Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@map("testimonials")
+}
+
+model Partner {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String   @unique @db.VarChar
+  logoUrl      String   @map("logo_url") @db.VarChar
+  websiteUrl   String?  @map("website_url") @db.VarChar
+  isActive     Boolean? @default(true) @map("is_active")
+  displayOrder Int?     @default(0) @map("display_order")
+
+  @@map("partners")
+}
+
+model QuoteLead {
+  id                String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  selectedServiceId String?     @map("selected_service_id") @db.Uuid
+  clientName        String      @map("client_name") @db.VarChar
+  organizationName  String?     @map("organization_name") @db.VarChar
+  contactEmail      String      @map("contact_email") @db.VarChar
+  projectDetails    String      @map("project_details") @db.Text
+  estimatedBudget   String?     @map("estimated_budget") @db.VarChar
+  desiredTimeline   String?     @map("desired_timeline") @db.VarChar
+  status            LeadStatus? @default(NEW)
+  createdAt         DateTime?   @default(now()) @map("created_at") @db.Timestamp(6)
+
+  // Relations
+  selectedService Service? @relation(fields: [selectedServiceId], references: [id], onDelete: SetNull)
+
+  @@map("quote_leads")
+}
+
+model SystemConfig {
+  id          String @id @db.VarChar
+  heading     String @db.VarChar
+  content     String @db.Text
+  metaPayload Json?  @map("meta_payload")
+
+  @@map("system_config")
+}
+
+model Competition {
+  id               String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventName        String  @map("event_name") @db.VarChar
+  projectName      String  @map("project_name") @db.VarChar
+  role             String? @db.VarChar
+  dateParticipated String? @map("date_participated") @db.VarChar
+  description      String? @db.Text
+  displayOrder     Int?    @default(0) @map("display_order")
+
+  @@map("competitions")
+}
